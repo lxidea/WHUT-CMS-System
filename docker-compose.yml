@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: cms-postgres
+    environment:
+      POSTGRES_DB: cms_whut
+      POSTGRES_USER: cms_user
+      POSTGRES_PASSWORD: cms_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: cms-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cms-backend
+    environment:
+      DATABASE_URL: postgresql://cms_user:cms_password@postgres:5432/cms_whut
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: your-secret-key-change-in-production
+      DEBUG: "true"
+    volumes:
+      - ./backend:/app
+      - media_files:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Spider/Scraper
+  spider:
+    build:
+      context: ./spider
+      dockerfile: Dockerfile
+    container_name: cms-spider
+    environment:
+      DATABASE_URL: postgresql://cms_user:cms_password@postgres:5432/cms_whut
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_API_URL: http://backend:8000
+    volumes:
+      - ./spider:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    # Spider runs via cron/celery beat, not as continuous service
+    command: tail -f /dev/null
+
+  # Celery Worker (for scheduled tasks)
+  celery-worker:
+    build:
+      context: ./spider
+      dockerfile: Dockerfile
+    container_name: cms-celery-worker
+    environment:
+      DATABASE_URL: postgresql://cms_user:cms_password@postgres:5432/cms_whut
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_API_URL: http://backend:8000
+    volumes:
+      - ./spider:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A tasks worker --loglevel=info
+
+  # Celery Beat (scheduler)
+  celery-beat:
+    build:
+      context: ./spider
+      dockerfile: Dockerfile
+    container_name: cms-celery-beat
+    environment:
+      DATABASE_URL: postgresql://cms_user:cms_password@postgres:5432/cms_whut
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_API_URL: http://backend:8000
+    volumes:
+      - ./spider:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A tasks beat --loglevel=info
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cms-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_files:

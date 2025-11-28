@@ -1,0 +1,32 @@
+# Scrapy Framework
+scrapy==2.11.0
+
+# Task Queue
+celery==5.3.4
+redis==5.0.1
+
+# HTTP Client
+httpx==0.25.2
+requests==2.31.0
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# HTML Parsing
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Utilities
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+
+# Content extraction
+readability-lxml==0.8.1
+newspaper3k==0.2.8
+
+# Hash generation
+hashlib-additional==1.0
+
+# Logging
+loguru==0.7.2
