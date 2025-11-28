@@ -1,0 +1,47 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+interface NewsListParams {
+  page?: number
+  page_size?: number
+  category?: string
+  search?: string
+  featured_only?: boolean
+}
+
+export async function getNewsList(params: NewsListParams = {}) {
+  const queryParams = new URLSearchParams()
+
+  if (params.page) queryParams.append('page', params.page.toString())
+  if (params.page_size) queryParams.append('page_size', params.page_size.toString())
+  if (params.category) queryParams.append('category', params.category)
+  if (params.search) queryParams.append('search', params.search)
+  if (params.featured_only) queryParams.append('featured_only', 'true')
+
+  const response = await fetch(`${API_URL}/api/news/?${queryParams}`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch news')
+  }
+
+  return response.json()
+}
+
+export async function getNewsById(id: number) {
+  const response = await fetch(`${API_URL}/api/news/${id}`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch news item')
+  }
+
+  return response.json()
+}
+
+export async function getCategories() {
+  const response = await fetch(`${API_URL}/api/news/categories/list`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch categories')
+  }
+
+  return response.json()
+}
