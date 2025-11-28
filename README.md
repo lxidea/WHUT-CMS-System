@@ -1,5 +1,7 @@
 # CMS-WHUT
 
+**Fetching, browsing, and organizing all-in-one news system for WHUT campus**
+
 Content Management System for Wuhan University of Technology - A comprehensive system for aggregating, managing, and displaying university news and information.
 
 ## Project Overview
@@ -45,7 +47,7 @@ This CMS consists of three main components:
 
 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/lxidea/WHUT-CMS-System.git
 cd cms-whut
 ```
 
