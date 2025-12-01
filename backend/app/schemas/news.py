@@ -10,9 +10,11 @@ class NewsBase(BaseModel):
     source_name: str
     published_at: Optional[datetime] = None
     author: Optional[str] = None
+    publisher: Optional[str] = None
     images: List[str] = []
     attachments: List[dict] = []
     category: Optional[str] = None
+    department: Optional[str] = None
     tags: List[str] = []
 
 class NewsCreate(NewsBase):

@@ -1,120 +1,161 @@
-# Frontend
+# CMS-WHUT Frontend
 
-Next.js-based frontend for CMS-WHUT content management system.
+Modern news portal frontend for Wuhan University of Technology built with Next.js 14, TypeScript, and Tailwind CSS.
 
-## Features
+## ✨ Features
 
-- Modern React with Next.js 14 (App Router)
-- TypeScript for type safety
-- Tailwind CSS for styling
-- Responsive design
-- Server-side rendering (SSR) support
-- API integration with backend
+- ✅ **News Listing**: Browse all news with pagination (20 per page)
+- ✅ **Category Filtering**: Filter by 4 categories (部门亮点资讯, 学校通知·公告, 学院通知公告, 学术讲座)
+- ✅ **Search Functionality**: Search news by title and content
+- ✅ **Article Detail Pages**: View full article content with metadata
+- ✅ **Image-Only Post Handling**: Special display for image-based announcements
+- ✅ **Responsive Design**: Mobile-first responsive layout
+- ✅ **Clean UI**: Modern, accessible interface with Chinese font optimization
 
-## Project Structure
+## 🚀 Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Native Fetch API
+- **Date Handling**: Day.js with Chinese locale
+
+## 📁 Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── app/              # Next.js app router
-│   │   ├── layout.tsx    # Root layout
-│   │   ├── page.tsx      # Home page
-│   │   └── globals.css   # Global styles
-│   ├── components/       # React components
-│   │   ├── Header.tsx
-│   │   └── NewsList.tsx
-│   └── lib/              # Utilities
-│       └── api.ts        # API client
-├── public/               # Static files
-├── package.json
-├── tsconfig.json
-├── tailwind.config.js
-└── next.config.js
+│   ├── app/
+│   │   ├── layout.tsx         # Root layout
+│   │   ├── page.tsx           # Home page (news listing)
+│   │   ├── news/[id]/page.tsx # Article detail page
+│   │   └── globals.css        # Global styles
+│   ├── components/
+│   │   ├── Header.tsx         # Site header
+│   │   ├── NewsList.tsx       # News list component
+│   │   ├── CategoryFilter.tsx # Category filter buttons
+│   │   └── SearchBar.tsx      # Search input component
+│   └── lib/
+│       ├── api.ts             # API client functions
+│       └── types.ts           # TypeScript type definitions
+├── public/                    # Static assets
+└── package.json
 ```
 
-## Development
+## 🛠️ Getting Started
 
-### Local Setup (without Docker)
+### Prerequisites
 
-1. Install dependencies:
+- Node.js 18+ and npm 9+
+- Backend API running at http://localhost:8000
+
+### Installation
+
 ```bash
+# Install dependencies
 npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
 ```
 
-2. Set environment variables:
-```bash
-# Create .env.local
-echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+The application will be available at **http://localhost:3000**
+
+## 🌐 Environment Variables
+
+Create a `.env.local` file:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-3. Run development server:
+## 📄 Pages
+
+### Home Page (`/`)
+- News listing with pagination
+- Category filter buttons
+- Search bar
+- Total news count
+- Responsive grid layout
+
+### Article Detail Page (`/news/[id]`)
+- Full article content
+- Metadata (date, views, source)
+- Category badge
+- Special indicator for image posts
+- Back navigation
+- Link to original source
+
+## 🧩 Components
+
+### Header
+Site branding and navigation with responsive layout
+
+### NewsList
+Displays news cards with title, summary, category, date, views
+
+### CategoryFilter
+Filter buttons with active state styling
+
+### SearchBar
+Search input with submit and clear functionality
+
+## 🔌 API Integration
+
+Functions in `src/lib/api.ts`:
+
+```typescript
+getNewsList({ page, page_size, category?, search? })
+getNewsById(id)
+getCategories()
+```
+
+## 🎨 Styling
+
+- Tailwind CSS with blue primary color
+- Responsive breakpoints (sm, md, lg, xl)
+- Custom prose styles for articles
+- Optimized Chinese font stack
+
+## 🚀 Integration with Backend
+
 ```bash
+# Terminal 1: Start backend
+cd ../backend
+source venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2: Start frontend
 npm run dev
 ```
 
-4. Open http://localhost:3000
+## 🔧 Troubleshooting
 
-### With Docker Compose
-
-From project root:
+### Port Already in Use
 ```bash
-docker-compose up frontend
+lsof -ti:3000 | xargs kill -9
 ```
 
-## Build for Production
+### API Connection Issues
+- Verify backend: `curl http://localhost:8000/api/health`
+- Check CORS settings in backend
+- Verify NEXT_PUBLIC_API_URL
 
+### Build Errors
 ```bash
-npm run build
-npm run start
+rm -rf .next node_modules package-lock.json
+npm install
 ```
 
-## Environment Variables
+## 📱 Browser Support
 
-- `NEXT_PUBLIC_API_URL`: Backend API URL (default: http://localhost:8000)
-
-## Features to Implement
-
-This is a basic skeleton. You can extend with:
-
-1. **News Detail Page**: View full article
-2. **Search**: Full-text search functionality
-3. **Categories**: Filter by category
-4. **Pagination**: Navigate through news pages
-5. **RSS Feed**: Subscribe to updates
-6. **Dark Mode**: Theme toggle
-7. **Admin Panel**: Manage news (future)
-
-## Adding New Pages
-
-Create files in `src/app/`:
-
-```bash
-# News detail page
-src/app/news/[id]/page.tsx
-
-# Categories page
-src/app/categories/page.tsx
-```
-
-## Styling
-
-Using Tailwind CSS utility classes:
-
-```tsx
-<div className="bg-white p-4 rounded-lg shadow-md">
-  Content
-</div>
-```
-
-Customize theme in `tailwind.config.js`.
-
-## API Integration
-
-See `src/lib/api.ts` for API client functions.
-
-Example usage:
-```tsx
-import { getNewsList } from '@/lib/api'
-
-const data = await getNewsList({ page: 1, page_size: 20 })
-```
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari (latest)
+- Mobile browsers

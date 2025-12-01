@@ -4,6 +4,8 @@ interface NewsListParams {
   page?: number
   page_size?: number
   category?: string
+  publisher?: string
+  department?: string
   search?: string
   featured_only?: boolean
 }
@@ -14,6 +16,8 @@ export async function getNewsList(params: NewsListParams = {}) {
   if (params.page) queryParams.append('page', params.page.toString())
   if (params.page_size) queryParams.append('page_size', params.page_size.toString())
   if (params.category) queryParams.append('category', params.category)
+  if (params.publisher) queryParams.append('publisher', params.publisher)
+  if (params.department) queryParams.append('department', params.department)
   if (params.search) queryParams.append('search', params.search)
   if (params.featured_only) queryParams.append('featured_only', 'true')
 
@@ -41,6 +45,73 @@ export async function getCategories() {
 
   if (!response.ok) {
     throw new Error('Failed to fetch categories')
+  }
+
+  return response.json()
+}
+
+export async function getPublishers() {
+  const response = await fetch(`${API_URL}/api/news/publishers/list`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch publishers')
+  }
+
+  return response.json()
+}
+
+export async function getDepartments() {
+  const response = await fetch(`${API_URL}/api/news/departments/list`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch departments')
+  }
+
+  return response.json()
+}
+
+// Bookmark API functions
+export async function addBookmark(newsId: number, token: string) {
+  const response = await fetch(`${API_URL}/api/auth/bookmarks/${newsId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to add bookmark')
+  }
+
+  return response.json()
+}
+
+export async function removeBookmark(newsId: number, token: string) {
+  const response = await fetch(`${API_URL}/api/auth/bookmarks/${newsId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to remove bookmark')
+  }
+
+  return response.json()
+}
+
+export async function getBookmarks(token: string) {
+  const response = await fetch(`${API_URL}/api/auth/bookmarks`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch bookmarks')
   }
 
   return response.json()

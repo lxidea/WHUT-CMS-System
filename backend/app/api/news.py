@@ -6,13 +6,15 @@ from app.core.database import get_db
 from app.models.news import News
 from app.schemas.news import NewsResponse, NewsList, NewsCreate, NewsUpdate
 
-router = APIRouter()
+router = APIRouter(prefix="/api/news")
 
 @router.get("/", response_model=NewsList)
 async def get_news_list(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     category: Optional[str] = None,
+    publisher: Optional[str] = None,
+    department: Optional[str] = None,
     search: Optional[str] = None,
     featured_only: bool = False,
     db: Session = Depends(get_db)
@@ -24,6 +26,12 @@ async def get_news_list(
 
     if category:
         query = query.filter(News.category == category)
+
+    if publisher:
+        query = query.filter(News.publisher == publisher)
+
+    if department:
+        query = query.filter(News.department == department)
 
     if featured_only:
         query = query.filter(News.is_featured == True)
@@ -141,3 +149,27 @@ async def get_categories(db: Session = Depends(get_db)):
     ).all()
 
     return {"categories": [cat[0] for cat in categories]}
+
+@router.get("/publishers/list")
+async def get_publishers(db: Session = Depends(get_db)):
+    """
+    Get list of all unique publishers
+    """
+    publishers = db.query(News.publisher).distinct().filter(
+        News.publisher.isnot(None),
+        News.is_published == True
+    ).all()
+
+    return {"publishers": [pub[0] for pub in publishers]}
+
+@router.get("/departments/list")
+async def get_departments(db: Session = Depends(get_db)):
+    """
+    Get list of all unique departments
+    """
+    departments = db.query(News.department).distinct().filter(
+        News.department.isnot(None),
+        News.is_published == True
+    ).all()
+
+    return {"departments": [dept[0] for dept in departments]}

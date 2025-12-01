@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.core.database import get_db
 import redis
 from app.core.config import settings
@@ -19,7 +20,7 @@ async def health_check(db: Session = Depends(get_db)):
 
     # Check database
     try:
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         status["database"] = "healthy"
     except Exception as e:
         status["database"] = f"unhealthy: {str(e)}"

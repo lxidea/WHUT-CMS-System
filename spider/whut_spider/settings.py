@@ -9,14 +9,14 @@ NEWSPIDER_MODULE = 'whut_spider.spiders'
 USER_AGENT = 'Mozilla/5.0 (compatible; WHUT-CMS-Spider/1.0; +http://cms.whut.edu.cn)'
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False  # Disabled for campus news crawling
 
 # Configure maximum concurrent requests
 CONCURRENT_REQUESTS = 8
 
-# Configure a delay for requests for the same website
-DOWNLOAD_DELAY = 2
-CONCURRENT_REQUESTS_PER_DOMAIN = 4
+# Configure a delay for requests for the same website (increased for comprehensive crawling)
+DOWNLOAD_DELAY = 2  # 2 seconds between requests
+CONCURRENT_REQUESTS_PER_DOMAIN = 2  # Reduced to 2 for more respectful crawling
 
 # Disable cookies
 COOKIES_ENABLED = False
@@ -37,6 +37,7 @@ SPIDER_MIDDLEWARES = {
 
 # Enable or disable downloader middlewares
 DOWNLOADER_MIDDLEWARES = {
+    'whut_spider.middlewares.ProxyMiddleware': 350,
     'whut_spider.middlewares.RandomUserAgentMiddleware': 400,
 }
 
@@ -63,4 +64,17 @@ LOG_LEVEL = 'INFO'
 LOG_FORMAT = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
 
 # Custom settings
-BACKEND_API_URL = 'http://backend:8000'
+# For local development, use localhost; for Docker, use service name 'backend'
+BACKEND_API_URL = 'http://localhost:8000'
+
+# SOCKS5 Proxy configuration (for off-campus access to WHUT website)
+# Disabled - using VPN connection instead
+# HTTPPROXY_ENABLED = True
+# PROXY = 'socks5://18.tcp.vip.cpolar.cn:14593'
+
+# Custom download handlers (using HTTPX with SOCKS5 support)
+# Disabled - using VPN connection with standard Scrapy handlers
+# DOWNLOAD_HANDLERS = {
+#     'http': 'whut_spider.httpx_handler.HttpxDownloadHandler',
+#     'https': 'whut_spider.httpx_handler.HttpxDownloadHandler',
+# }

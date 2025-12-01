@@ -24,7 +24,6 @@ aiohttp==3.9.1
 
 # Utilities
 python-dotenv==1.0.0
-pydantic-core==2.14.5
 
 # CORS
 fastapi-cors==0.0.6

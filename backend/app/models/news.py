@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -17,6 +18,7 @@ class News(Base):
     # Publication info
     published_at = Column(DateTime(timezone=True), nullable=True)
     author = Column(String(200), nullable=True)
+    publisher = Column(String(200), nullable=True, index=True)  # Publishing unit (XX学院, XX部)
 
     # Media
     images = Column(JSON, default=list)  # List of image URLs
@@ -24,6 +26,7 @@ class News(Base):
 
     # Categorization
     category = Column(String(100), nullable=True, index=True)
+    department = Column(String(200), nullable=True, index=True)  # Department or college name
     tags = Column(JSON, default=list)
 
     # Status
@@ -37,6 +40,9 @@ class News(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    bookmarked_by = relationship("User", secondary="user_bookmarks", back_populates="bookmarks")
 
     def __repr__(self):
         return f"<News(id={self.id}, title={self.title[:50]})>"

@@ -63,6 +63,19 @@ class BackendAPIPipeline:
 
             if response.status_code == 201:
                 spider.logger.info(f'Successfully saved: {data["title"][:50]}...')
+
+                # Trigger keyword matching for new items
+                try:
+                    response_data = response.json()
+                    news_id = response_data.get('id')
+                    if news_id:
+                        # Import and trigger celery task asynchronously
+                        from tasks import check_keyword_matches
+                        check_keyword_matches.delay(news_id)
+                        spider.logger.debug(f'Triggered keyword matching for news ID {news_id}')
+                except Exception as task_error:
+                    spider.logger.warning(f'Failed to trigger keyword matching: {str(task_error)}')
+
             elif response.status_code == 409:
                 spider.logger.debug(f'Duplicate content skipped: {data["title"][:50]}...')
             else:

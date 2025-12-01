@@ -1,5 +1,6 @@
 import random
 from scrapy import signals
+import os
 
 class RandomUserAgentMiddleware:
     """Rotate user agents to avoid detection"""
@@ -13,6 +14,23 @@ class RandomUserAgentMiddleware:
 
     def process_request(self, request, spider):
         request.headers['User-Agent'] = random.choice(self.USER_AGENTS)
+
+
+class ProxyMiddleware:
+    """Apply SOCKS5 proxy to all requests"""
+
+    def __init__(self, proxy):
+        self.proxy = proxy
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        proxy = crawler.settings.get('PROXY')
+        return cls(proxy)
+
+    def process_request(self, request, spider):
+        if self.proxy:
+            request.meta['proxy'] = self.proxy
+            spider.logger.debug(f'Using proxy: {self.proxy}')
 
 
 class DuplicateFilterMiddleware:

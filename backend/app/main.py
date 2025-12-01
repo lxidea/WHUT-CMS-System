@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import news, health
+from app.api import news, health, auth, subscriptions
 
 app = FastAPI(
     title="CMS-WHUT API",
@@ -19,8 +19,10 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(health.router, prefix="/api", tags=["health"])
-app.include_router(news.router, prefix="/api/news", tags=["news"])
+app.include_router(health.router, tags=["health"])
+app.include_router(auth.router, tags=["authentication"])
+app.include_router(news.router, tags=["news"])
+app.include_router(subscriptions.router, tags=["subscriptions"])
 
 @app.get("/")
 async def root():
