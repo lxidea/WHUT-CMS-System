@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getNewsList } from '@/lib/api'
+import CalendarSidebar from './CalendarSidebar'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -42,6 +43,9 @@ export default function Sidebar({ categories, selectedCategory, onCategoryChange
 
   return (
     <aside className="space-y-6">
+      {/* Calendar */}
+      <CalendarSidebar />
+
       {/* Categories */}
       <div className="bg-white rounded-xl shadow-soft p-6 border border-gray-100">
         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">

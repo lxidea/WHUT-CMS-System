@@ -116,3 +116,48 @@ export async function getBookmarks(token: string) {
 
   return response.json()
 }
+
+// Calendar API functions
+export async function getCalendarSummary() {
+  const response = await fetch(`${API_URL}/api/calendar/summary`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch calendar summary')
+  }
+
+  return response.json()
+}
+
+export async function getCurrentSemester() {
+  const response = await fetch(`${API_URL}/api/calendar/semesters/current`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch current semester')
+  }
+
+  return response.json()
+}
+
+export async function getSemesters() {
+  const response = await fetch(`${API_URL}/api/calendar/semesters`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch semesters')
+  }
+
+  return response.json()
+}
+
+export async function getMonthlyCalendar(year?: number, month?: number) {
+  const params = new URLSearchParams()
+  if (year) params.append('year', year.toString())
+  if (month) params.append('month', month.toString())
+
+  const response = await fetch(`${API_URL}/api/calendar/monthly?${params}`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch monthly calendar')
+  }
+
+  return response.json()
+}
