@@ -15,6 +15,7 @@ async def get_news_list(
     category: Optional[str] = None,
     publisher: Optional[str] = None,
     department: Optional[str] = None,
+    source_name: Optional[str] = None,
     search: Optional[str] = None,
     featured_only: bool = False,
     db: Session = Depends(get_db)
@@ -32,6 +33,9 @@ async def get_news_list(
 
     if department:
         query = query.filter(News.department == department)
+
+    if source_name:
+        query = query.filter(News.source_name == source_name)
 
     if featured_only:
         query = query.filter(News.is_featured == True)
@@ -173,3 +177,16 @@ async def get_departments(db: Session = Depends(get_db)):
     ).all()
 
     return {"departments": [dept[0] for dept in departments]}
+
+
+@router.get("/sources/list")
+async def get_sources(db: Session = Depends(get_db)):
+    """
+    Get list of all unique news sources
+    """
+    sources = db.query(News.source_name).distinct().filter(
+        News.source_name.isnot(None),
+        News.is_published == True
+    ).all()
+
+    return {"sources": [src[0] for src in sources]}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import { useAuth } from '@/contexts/AuthContext'
@@ -30,7 +31,10 @@ export default function NewsList({ news, bookmarkedIds = [], onBookmarkChange }:
   const { user, token } = useAuth()
   const [loading, setLoading] = useState<number | null>(null)
 
-  const handleBookmark = async (newsId: number, isBookmarked: boolean) => {
+  const handleBookmark = async (e: React.MouseEvent, newsId: number, isBookmarked: boolean) => {
+    e.preventDefault()
+    e.stopPropagation()
+
     if (!token) {
       alert('请先登录')
       return
@@ -53,148 +57,128 @@ export default function NewsList({ news, bookmarkedIds = [], onBookmarkChange }:
 
   if (news.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">暂无新闻</p>
+      <div className="text-center py-16">
+        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-surface-800 flex items-center justify-center">
+          <svg className="w-12 h-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+          </svg>
+        </div>
+        <p className="text-gray-500 dark:text-gray-400 text-lg">暂无新闻</p>
+        <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">稍后再来看看吧</p>
       </div>
     )
   }
 
   return (
-    <div className="relative pl-0 md:pl-12">
-      {/* Animated Background Blobs for Glassmorphism */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob" />
-      <div className="absolute top-40 right-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000" />
-      <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000" />
+    <div className="space-y-3">
+      {news.map((item, index) => {
+        const isBookmarked = bookmarkedIds.includes(item.id)
 
-      {/* Timeline Line - Hidden on mobile */}
-      <div className="hidden md:block absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 via-purple-400 to-pink-400 opacity-30" />
+        return (
+          <Link key={item.id} href={`/news/${item.id}`}>
+            <article
+              className="group bg-white dark:bg-surface-800 rounded-xl p-5 shadow-soft dark:shadow-dark-soft hover:shadow-hover dark:hover:shadow-dark-medium transition-all duration-300 cursor-pointer border border-gray-100 dark:border-surface-700 hover:border-primary-200 dark:hover:border-primary-700 animate-slide-up"
+              style={{ animationDelay: `${index * 30}ms` }}
+            >
+              <div className="flex items-start gap-4">
+                {/* Left: Category indicator */}
+                <div className="flex-shrink-0 hidden sm:block">
+                  <div className="w-1 h-12 rounded-full bg-gradient-to-b from-primary-400 to-secondary-500 dark:from-primary-500 dark:to-secondary-600 group-hover:h-16 transition-all duration-300" />
+                </div>
 
-      <div className="relative space-y-8">
-        {news.map((item, index) => {
-          const isBookmarked = bookmarkedIds.includes(item.id)
-
-          return (
-            <div key={item.id} className="relative">
-              {/* Timeline Dot - Hidden on mobile */}
-              <div className="hidden md:block absolute -left-[2.6rem] top-8 w-5 h-5 rounded-full bg-white border-4 border-blue-500 shadow-lg z-10 animate-pulse-slow" />
-
-              {/* Date Badge - Hidden on mobile */}
-              <div className="hidden md:block absolute -left-[5.5rem] top-7 text-right">
-                {item.published_at && (
-                  <>
-                    <div className="text-xs font-bold text-gray-700">
-                      {dayjs(item.published_at).format('MM-DD')}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {dayjs(item.published_at).format('YYYY')}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Glassmorphism Card */}
-              <article
-                className="backdrop-blur-xl bg-white/70 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 p-6 border border-white/50 hover:bg-white/80 cursor-pointer md:ml-4 md:border-l-4 md:border-l-blue-500 animate-slide-up group"
-                style={{ animationDelay: `${index * 100}ms` }}
-                onClick={() => window.location.href = `/news/${item.id}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-3 flex-wrap">
-                      {item.category && (
-                        <span className="text-xs backdrop-blur-sm bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1.5 rounded-full font-semibold shadow-md">
-                          {item.category}
-                        </span>
-                      )}
-                      {item.publisher && (
-                        <span className="text-xs backdrop-blur-sm bg-gradient-to-r from-green-500 to-teal-500 text-white px-3 py-1.5 rounded-full font-semibold shadow-md">
-                          📢 {item.publisher}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-600 flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm3 1h6v4H7V5zm6 6H7v2h6v-2z" clipRule="evenodd" />
-                        </svg>
-                        {item.source_name}
+                {/* Main Content */}
+                <div className="flex-1 min-w-0">
+                  {/* Top Row: Category & Date */}
+                  <div className="flex items-center gap-3 mb-2 flex-wrap text-xs">
+                    {item.category && (
+                      <span className="text-primary-600 dark:text-primary-400 font-medium bg-primary-50 dark:bg-primary-900/20 px-2.5 py-0.5 rounded-full">
+                        {item.category}
                       </span>
-                      {/* Mobile date display */}
-                      {item.published_at && (
-                        <span className="md:hidden text-xs text-gray-500 flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" />
-                          </svg>
-                          {dayjs(item.published_at).format('YYYY-MM-DD')}
-                        </span>
-                      )}
-                    </div>
-
-                    <h2 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">
-                      {item.title}
-                    </h2>
-
-                    {item.summary && (
-                      <p className="text-gray-700 text-sm mb-4 line-clamp-2 leading-relaxed">
-                        {item.summary}
-                      </p>
                     )}
-
-                    <div className="flex items-center gap-5 text-xs text-gray-600">
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                        </svg>
-                        {item.view_count} 浏览
-                      </span>
-                    </div>
+                    <span className="text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {item.published_at ? dayjs(item.published_at).format('YYYY-MM-DD') : '未知日期'}
+                    </span>
+                    <span className="text-gray-400 dark:text-gray-500">
+                      {item.source_name}
+                    </span>
                   </div>
 
-                  <div className="flex flex-col gap-3 items-center">
-                    {/* Decorative Icon */}
-                    <div className="w-20 h-20 rounded-xl backdrop-blur-sm bg-gradient-to-br from-blue-400/20 to-purple-400/20 hidden lg:flex items-center justify-center flex-shrink-0 shadow-inner">
-                      <svg className="w-10 h-10 text-blue-500/60" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm3 1h6v4H7V5zm6 6H7v2h6v-2z" clipRule="evenodd" />
-                      </svg>
-                    </div>
+                  {/* Title */}
+                  <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2">
+                    {item.title}
+                  </h2>
 
-                    {/* Bookmark Button */}
-                    {user && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleBookmark(item.id, isBookmarked)
-                        }}
-                        disabled={loading === item.id}
-                        className={`flex-shrink-0 p-3 rounded-full backdrop-blur-sm transition-all duration-200 ${
-                          isBookmarked
-                            ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-100/80 hover:bg-yellow-200/80 shadow-md'
-                            : 'text-gray-400 hover:text-blue-600 bg-white/50 hover:bg-blue-50/80'
-                        } ${loading === item.id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
-                        title={isBookmarked ? '取消收藏' : '收藏'}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          fill={isBookmarked ? 'currentColor' : 'none'}
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                          />
+                  {/* Summary */}
+                  {item.summary && !item.summary.includes('[图片公告]') && (
+                    <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-2 leading-relaxed mb-3">
+                      {item.summary}
+                    </p>
+                  )}
+
+                  {/* Bottom Row: Views & Publisher */}
+                  <div className="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      {item.view_count} 浏览
+                    </span>
+                    {item.publisher && (
+                      <span className="flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                      </button>
+                        {item.publisher}
+                      </span>
                     )}
                   </div>
                 </div>
-              </article>
-            </div>
-          )
-        })}
-      </div>
+
+                {/* Right: Bookmark & Arrow */}
+                <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                  {user && (
+                    <button
+                      onClick={(e) => handleBookmark(e, item.id, isBookmarked)}
+                      disabled={loading === item.id}
+                      className={`p-2 rounded-full transition-all duration-200 ${
+                        isBookmarked
+                          ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10'
+                          : 'text-gray-300 dark:text-gray-600 hover:text-primary-500 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10'
+                      } ${loading === item.id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+                      title={isBookmarked ? '取消收藏' : '收藏'}
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill={isBookmarked ? 'currentColor' : 'none'}
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                        />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Arrow indicator */}
+                  <div className="text-gray-300 dark:text-gray-600 group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-all duration-200 group-hover:translate-x-1">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </Link>
+        )
+      })}
     </div>
   )
 }

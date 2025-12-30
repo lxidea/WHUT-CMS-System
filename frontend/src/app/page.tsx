@@ -10,19 +10,22 @@ import CategoryFilter from '@/components/CategoryFilter'
 import SearchBar from '@/components/SearchBar'
 import Sidebar from '@/components/Sidebar'
 import Pagination from '@/components/Pagination'
+import HeroSection from '@/components/HeroSection'
 
 function HomeContent() {
   const searchParams = useSearchParams()
   const { token } = useAuth()
   const [news, setNews] = useState([])
+  const [featuredNews, setFeaturedNews] = useState([])
   const [categories, setCategories] = useState<string[]>([])
   const [bookmarkedIds, setBookmarkedIds] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [selectedSource, setSelectedSource] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
-  const pageSize = 20
+  const pageSize = 12
 
   // Handle URL query parameters
   useEffect(() => {
@@ -42,6 +45,23 @@ function HomeContent() {
       }
     }
     fetchCategories()
+  }, [])
+
+  // Fetch featured news for hero section
+  useEffect(() => {
+    async function fetchFeaturedNews() {
+      try {
+        // Get latest news with images for the hero section
+        const data = await getNewsList({ page: 1, page_size: 5 })
+        // Filter to get items with images preferably
+        const withImages = data.items.filter((item: any) => item.images && item.images.length > 0)
+        const featured = withImages.length >= 3 ? withImages.slice(0, 5) : data.items.slice(0, 5)
+        setFeaturedNews(featured)
+      } catch (error) {
+        console.error('Failed to fetch featured news:', error)
+      }
+    }
+    fetchFeaturedNews()
   }, [])
 
   useEffect(() => {
@@ -66,6 +86,7 @@ function HomeContent() {
       try {
         const params: any = { page, page_size: pageSize }
         if (selectedCategory) params.category = selectedCategory
+        if (selectedSource) params.source_name = selectedSource
         if (searchQuery) params.search = searchQuery
 
         const data = await getNewsList(params)
@@ -79,10 +100,15 @@ function HomeContent() {
     }
 
     fetchNews()
-  }, [page, selectedCategory, searchQuery])
+  }, [page, selectedCategory, selectedSource, searchQuery])
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
+    setPage(1)
+  }
+
+  const handleSourceChange = (source: string) => {
+    setSelectedSource(source)
     setPage(1)
   }
 
@@ -94,19 +120,18 @@ function HomeContent() {
   const totalPages = Math.ceil(total / pageSize)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-primary-50/20">
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-950 transition-colors">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            最新资讯
-          </h1>
+      <main className="container mx-auto px-4 py-6">
+        {/* Hero Section */}
+        {!selectedCategory && !searchQuery && page === 1 && featuredNews.length > 0 && (
+          <HeroSection featuredNews={featuredNews} />
+        )}
 
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <SearchBar onSearch={handleSearch} />
-            </div>
+        {/* Search and Filter Bar */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <SearchBar onSearch={handleSearch} />
           </div>
         </div>
 
@@ -123,18 +148,25 @@ function HomeContent() {
               />
             </div>
 
+            {/* Results Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                {selectedCategory || searchQuery ? '搜索结果' : '最新资讯'}
+              </h2>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                共 {total} 条
+                {selectedCategory && ` · ${selectedCategory}`}
+                {searchQuery && ` · "${searchQuery}"`}
+              </span>
+            </div>
+
             {loading ? (
-              <div className="text-center py-12">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
-                <p className="mt-4 text-gray-600">加载中...</p>
+              <div className="text-center py-16">
+                <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
+                <p className="mt-4 text-gray-500 dark:text-gray-400">加载中...</p>
               </div>
             ) : (
               <>
-                <div className="mb-4 text-sm text-gray-600 font-medium">
-                  共 {total} 条新闻
-                  {selectedCategory && ` · 分类: ${selectedCategory}`}
-                  {searchQuery && ` · 搜索: ${searchQuery}`}
-                </div>
                 <NewsList
                   news={news}
                   bookmarkedIds={bookmarkedIds}
@@ -159,11 +191,13 @@ function HomeContent() {
 
           {/* Sidebar - Right Column */}
           <div className="lg:col-span-4">
-            <div className="sticky top-24">
+            <div className="sticky top-20">
               <Sidebar
                 categories={categories}
                 selectedCategory={selectedCategory}
                 onCategoryChange={handleCategoryChange}
+                selectedSource={selectedSource}
+                onSourceChange={handleSourceChange}
               />
             </div>
           </div>
@@ -176,11 +210,11 @@ function HomeContent() {
 export default function Home() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
         <Header />
-        <div className="text-center py-12">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-          <p className="mt-4 text-gray-600">加载中...</p>
+        <div className="text-center py-16">
+          <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent"></div>
+          <p className="mt-4 text-gray-500 dark:text-gray-400">加载中...</p>
         </div>
       </div>
     }>

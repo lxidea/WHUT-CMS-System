@@ -54,7 +54,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       {totalPages > 1 && currentPage !== 1 && (
         <button
           onClick={() => onPageChange(1)}
-          className="px-4 py-2 rounded-lg backdrop-blur-sm bg-white/70 border border-white/50 hover:bg-white/90 hover:shadow-md font-medium transition-all duration-200 text-gray-700"
+          className="px-3 py-2 rounded-lg bg-white dark:bg-surface-800 border border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700 hover:shadow-md font-medium transition-all duration-200 text-gray-700 dark:text-gray-300"
           title="首页 (1)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-4 py-2 rounded-lg backdrop-blur-sm bg-white/70 border border-white/50 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 hover:shadow-md font-medium transition-all duration-200 text-gray-700"
+        className="px-3 py-2 rounded-lg bg-white dark:bg-surface-800 border border-gray-200 dark:border-surface-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-surface-700 hover:shadow-md font-medium transition-all duration-200 text-gray-700 dark:text-gray-300"
         title="上一页"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +81,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
           return (
             <span
               key={`ellipsis-${index}`}
-              className="px-3 py-2 text-gray-500 font-medium"
+              className="px-3 py-2 text-gray-500 dark:text-gray-400 font-medium"
             >
               ...
             </span>
@@ -95,10 +95,10 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
           <button
             key={pageNum}
             onClick={() => onPageChange(pageNum)}
-            className={`min-w-[40px] px-4 py-2 rounded-lg backdrop-blur-sm font-medium transition-all duration-200 ${
+            className={`min-w-[40px] px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
               isActive
-                ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg scale-105 border border-blue-400'
-                : 'bg-white/70 border border-white/50 text-gray-700 hover:bg-white/90 hover:shadow-md hover:scale-105'
+                ? 'bg-gradient-mixed text-white shadow-lg scale-105'
+                : 'bg-white dark:bg-surface-800 border border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-surface-700 hover:shadow-md hover:scale-105'
             }`}
           >
             {pageNum}
@@ -110,7 +110,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-4 py-2 rounded-lg backdrop-blur-sm bg-white/70 border border-white/50 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 hover:shadow-md font-medium transition-all duration-200 text-gray-700"
+        className="px-3 py-2 rounded-lg bg-white dark:bg-surface-800 border border-gray-200 dark:border-surface-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-surface-700 hover:shadow-md font-medium transition-all duration-200 text-gray-700 dark:text-gray-300"
         title="下一页"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +122,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       {totalPages > 1 && currentPage !== totalPages && (
         <button
           onClick={() => onPageChange(totalPages)}
-          className="px-4 py-2 rounded-lg backdrop-blur-sm bg-white/70 border border-white/50 hover:bg-white/90 hover:shadow-md font-medium transition-all duration-200 text-gray-700"
+          className="px-3 py-2 rounded-lg bg-white dark:bg-surface-800 border border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700 hover:shadow-md font-medium transition-all duration-200 text-gray-700 dark:text-gray-300"
           title={`末页 (${totalPages})`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -6,6 +6,7 @@ interface NewsListParams {
   category?: string
   publisher?: string
   department?: string
+  source_name?: string
   search?: string
   featured_only?: boolean
 }
@@ -18,6 +19,7 @@ export async function getNewsList(params: NewsListParams = {}) {
   if (params.category) queryParams.append('category', params.category)
   if (params.publisher) queryParams.append('publisher', params.publisher)
   if (params.department) queryParams.append('department', params.department)
+  if (params.source_name) queryParams.append('source_name', params.source_name)
   if (params.search) queryParams.append('search', params.search)
   if (params.featured_only) queryParams.append('featured_only', 'true')
 
@@ -65,6 +67,16 @@ export async function getDepartments() {
 
   if (!response.ok) {
     throw new Error('Failed to fetch departments')
+  }
+
+  return response.json()
+}
+
+export async function getSources() {
+  const response = await fetch(`${API_URL}/api/news/sources/list`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch sources')
   }
 
   return response.json()
