@@ -194,7 +194,7 @@ class WhutNewsPortalSpider(scrapy.Spider):
 
         # Pattern 2: Look for explicit next page link
         next_link = response.css('a.next::attr(href), a:contains("下一页")::attr(href)').get()
-        if next_link:
+        if next_link and not next_link.startswith('javascript') and next_link != '#':
             return response.urljoin(next_link)
 
         # Don't guess - only return None if we don't have clear pagination info
