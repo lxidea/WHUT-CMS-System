@@ -53,11 +53,14 @@ class WhutOADocumentsSpider(scrapy.Spider):
 
     custom_settings = {
         'DOWNLOAD_DELAY': 1,  # Be gentle with the OA server
+        'DOWNLOAD_TIMEOUT': 30,  # Increase timeout for slow responses
         'ROBOTSTXT_OBEY': False,  # OA systems often don't have robots.txt
+        'RETRY_TIMES': 2,  # Retry failed requests
         'DEFAULT_REQUEST_HEADERS': {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Encoding': 'gzip, deflate',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         }
     }
 
@@ -78,6 +81,18 @@ class WhutOADocumentsSpider(scrapy.Spider):
     def parse_seeyon_table(self, response, category, cat_code):
         """
         Parse Seeyon OA table layout with JavaScript:OpenNewWindow('id') pattern
+
+        HTML structure:
+        <table class="list">
+            <tr class="Head">...</tr>  <!-- header row -->
+            <tr>
+                <td class="t_icon">...</td>
+                <td nowrap><a href="JavaScript:OpenNewWindow('id')">title</a></td>
+                <td>department</td>
+                <td>...</td>
+                <td>date</td>
+            </tr>
+        </table>
         """
         item_count = 0
 
@@ -85,45 +100,54 @@ class WhutOADocumentsSpider(scrapy.Spider):
         # e.g., xzwj_list -> xzwj_detail
         detail_type = cat_code.replace('_list', '_detail')
 
-        # Find all table rows
-        rows = response.css('table.list tr')
+        # Find all table rows (skip header rows with class "Head")
+        rows = response.css('table.list tr:not(.Head)')
 
         for row in rows:
-            # Skip header rows
-            if row.css('td.Head, .Head'):
-                continue
-
             cells = row.css('td')
             if len(cells) < 3:
                 continue
 
             # Extract the JavaScript onclick to get document ID
-            link_elem = row.css('a[href*="OpenNewWindow"]')
+            # The link is in the second cell (index 1)
+            link_elem = row.css('a[href*="OpenNewWindow"]').get()
             if not link_elem:
                 continue
 
-            href = link_elem.css('::attr(href)').get()
+            # Get all links in row to find the title link (not the "2" link)
+            links = row.css('a[href*="OpenNewWindow"]')
+            title_link = None
+            for link in links:
+                text = link.css('::text').get()
+                if text and len(text.strip()) > 5:  # Title should be longer than just "2"
+                    title_link = link
+                    break
+
+            if not title_link:
+                continue
+
+            href = title_link.css('::attr(href)').get()
             if not href:
                 continue
 
-            # Extract ID from JavaScript:OpenNewWindow('id')
-            id_match = re.search(r"OpenNewWindow\(['\"](\d+)['\"]\)", href)
+            # Extract ID from JavaScript:OpenNewWindow('id') - ID can be negative
+            id_match = re.search(r"OpenNewWindow\(['\"](-?\d+)['\"]\)", href)
             if not id_match:
                 continue
 
             doc_id = id_match.group(1)
 
             # Get title (includes document number like 校办字〔2025〕29号)
-            title = link_elem.css('::text').get()
+            title = title_link.css('::text').get()
             if not title:
                 continue
             title = title.strip()
 
             # Skip pagination links
-            if title in ['下页', '上页', '首页', '末页', '尾页']:
+            if title in ['下页', '上页', '首页', '末页', '尾页', '2']:
                 continue
 
-            # Extract department (拟文单位)
+            # Extract department (拟文单位) - third cell (index 2)
             department = None
             if len(cells) >= 3:
                 dept_cell = cells[2]
@@ -131,13 +155,15 @@ class WhutOADocumentsSpider(scrapy.Spider):
                 if department:
                     department = department.strip()
 
-            # Extract date
+            # Extract date - last cell with date format
             date_str = None
-            if len(cells) >= 5:
-                date_cell = cells[4]
-                date_str = date_cell.css('::text').get()
-                if date_str:
-                    date_str = date_str.strip()
+            for cell in reversed(cells):
+                cell_text = cell.css('::text').get()
+                if cell_text:
+                    cell_text = cell_text.strip()
+                    if re.match(r'\d{4}-\d{2}-\d{2}', cell_text):
+                        date_str = cell_text
+                        break
 
             # Construct the detail URL
             detail_url = f'{self.base_url}/{detail_type}?id={doc_id}'
