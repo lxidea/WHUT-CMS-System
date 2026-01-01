@@ -35,6 +35,8 @@ class WhutWeeklyMeetingSpider(scrapy.Spider):
     custom_settings = {
         'DOWNLOAD_DELAY': 1,
         'ROBOTSTXT_OBEY': False,
+        # Disable SSL verification for internal OA system
+        'DOWNLOADER_CLIENT_TLS_VERIFY': False,
         'DEFAULT_REQUEST_HEADERS': {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
@@ -42,11 +44,42 @@ class WhutWeeklyMeetingSpider(scrapy.Spider):
         }
     }
 
+    # API endpoint for fetching meeting data (requires session/auth)
+    AJAX_URL = 'https://ioa.whut.edu.cn/seeyon/ajax.do'
+
     def parse(self, response):
         """
-        Parse the weekly meeting schedule page
+        Parse the weekly meeting schedule page.
+
+        The Seeyon OA system loads data via AJAX. This method first checks
+        if we're on the main page, then attempts to fetch data via the API.
         """
         self.logger.info(f'Parsing Weekly Meeting page: {response.url}')
+
+        # Check if page loaded correctly (Seeyon uses ajaxgrid for data)
+        if 'ajaxgrid' in response.text or 'weekMeetingList' in response.text:
+            self.logger.info('Detected Seeyon ajaxgrid page, attempting API fetch...')
+            # Try to fetch meeting list via AJAX API
+            yield scrapy.Request(
+                url=f'{self.AJAX_URL}?method=ajaxAction&managerName=newWeekMeetingManager&managerMethod=queryWeekMeetingList',
+                method='POST',
+                body=json.dumps([{"params": {"isPub": 1}, "page": 1, "rp": 50}]),
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Referer': response.url,
+                },
+                callback=self.parse_ajax_response,
+                errback=self.handle_ajax_error,
+                dont_filter=True,
+            )
+            return
+
+        # Check for authentication redirect
+        if '被迫下线' in response.text or 'logout' in response.text:
+            self.logger.warning('Authentication required for weekly meeting data. '
+                              'This spider requires VPN/internal network access.')
+            return
 
         # Try to determine page structure
         # Strategy 1: Table-based layout (most common for meeting schedules)
@@ -203,6 +236,115 @@ class WhutWeeklyMeetingSpider(scrapy.Spider):
 
         except json.JSONDecodeError as e:
             self.logger.warning(f'Failed to parse JSON: {e}')
+
+    def parse_ajax_response(self, response):
+        """
+        Parse Seeyon AJAX API response for meeting data.
+
+        The API returns data in format:
+        {
+            "rows": [...],  # Meeting data rows
+            "total": N,     # Total count
+            "page": 1       # Current page
+        }
+        or error format:
+        {
+            "code": "...",
+            "message": "..."
+        }
+        """
+        self.logger.info(f'Parsing AJAX response: {response.url}')
+
+        try:
+            data = json.loads(response.text)
+
+            # Check for error response
+            if 'code' in data and 'message' in data:
+                self.logger.warning(f'API error: {data.get("message")}')
+                # Check if it's an auth error
+                if '下线' in str(data.get('message', '')) or 'session' in str(data.get('message', '')).lower():
+                    self.logger.warning('Authentication required. Please ensure VPN/internal network access.')
+                return
+
+            # Extract meeting rows
+            rows = data.get('rows', data.get('data', data.get('items', [])))
+            if not rows:
+                self.logger.info('No meeting data found in API response')
+                return
+
+            self.logger.info(f'Found {len(rows)} meetings in API response')
+
+            for row in rows:
+                meeting_info = {
+                    'week': row.get('weekly', ''),
+                    'time': row.get('weekDate', row.get('date', '')),
+                    'topic': row.get('weekly', '') + ' ' + row.get('weekDate', ''),
+                }
+
+                # If row has an ID, fetch detailed meeting info
+                meeting_id = row.get('id')
+                if meeting_id:
+                    detail_url = f'https://ioa.whut.edu.cn/seeyon/ext/NewWeekMeeting.do?method=lookWeekMeeting&masterId={meeting_id}'
+                    yield scrapy.Request(
+                        url=detail_url,
+                        callback=self.parse_meeting_detail,
+                        meta={'meeting_info': meeting_info, 'meeting_id': meeting_id},
+                        errback=self.handle_ajax_error,
+                    )
+                elif meeting_info.get('topic'):
+                    yield from self.create_meeting_item(response, meeting_info)
+
+        except json.JSONDecodeError as e:
+            self.logger.warning(f'Failed to parse AJAX JSON response: {e}')
+            # Check if response is HTML (auth redirect)
+            if '被迫下线' in response.text or 'logout' in response.text:
+                self.logger.warning('Authentication required for weekly meeting data.')
+
+    def parse_meeting_detail(self, response):
+        """
+        Parse detailed meeting information page.
+        """
+        meeting_info = response.meta.get('meeting_info', {})
+        meeting_id = response.meta.get('meeting_id')
+
+        self.logger.info(f'Parsing meeting detail: {meeting_id}')
+
+        # Check for auth redirect
+        if '被迫下线' in response.text or 'logout' in response.text:
+            self.logger.warning('Authentication required for meeting details.')
+            return
+
+        # Extract meeting details from the detail page
+        # Try to find meeting content in tables or divs
+        tables = response.css('table')
+        for table in tables:
+            rows = table.css('tr')
+            for row in rows:
+                cells = row.css('td::text, th::text').getall()
+                cells = [c.strip() for c in cells if c.strip()]
+
+                for i, cell in enumerate(cells):
+                    if '时间' in cell and i + 1 < len(cells):
+                        meeting_info['time'] = cells[i + 1]
+                    elif '地点' in cell and i + 1 < len(cells):
+                        meeting_info['location'] = cells[i + 1]
+                    elif '内容' in cell and i + 1 < len(cells):
+                        meeting_info['topic'] = cells[i + 1]
+                    elif '主办' in cell and i + 1 < len(cells):
+                        meeting_info['organizer'] = cells[i + 1]
+                    elif '参加' in cell and i + 1 < len(cells):
+                        meeting_info['participants'] = cells[i + 1]
+
+        if meeting_info.get('topic') or meeting_info.get('time'):
+            yield from self.create_meeting_item(response, meeting_info)
+
+    def handle_ajax_error(self, failure):
+        """
+        Handle AJAX request errors.
+        """
+        self.logger.error(f'AJAX request failed: {failure.value}')
+        if 'SSL' in str(failure.value) or 'certificate' in str(failure.value).lower():
+            self.logger.warning('SSL certificate error. The OA system may require internal network access.')
 
     def parse_generic(self, response):
         """
