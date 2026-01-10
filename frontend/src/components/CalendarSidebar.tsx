@@ -1,37 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { getCalendarSummary } from '@/lib/api'
+import { useState } from 'react'
 import { CalendarSummary } from '@/lib/types'
 import MonthlyCalendar from './MonthlyCalendar'
 
 type ViewMode = 'compact' | 'monthly'
 
-export default function CalendarSidebar() {
-  const [calendar, setCalendar] = useState<CalendarSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface CalendarSidebarProps {
+  calendarSummary: CalendarSummary | null
+  calendarMonthly?: any
+  loading?: boolean
+  error?: string | null
+}
+
+export default function CalendarSidebar({
+  calendarSummary,
+  calendarMonthly,
+  loading = false,
+  error = null,
+}: CalendarSidebarProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('compact')
-
-  useEffect(() => {
-    async function fetchCalendar() {
-      try {
-        setLoading(true)
-        const data = await getCalendarSummary()
-        setCalendar(data)
-        setError(null)
-      } catch (err) {
-        setError('无法加载校历信息')
-        console.error('Failed to fetch calendar:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCalendar()
-    const interval = setInterval(fetchCalendar, 3600000)
-    return () => clearInterval(interval)
-  }, [])
 
   if (loading) {
     return (
@@ -45,7 +33,7 @@ export default function CalendarSidebar() {
     )
   }
 
-  if (error || !calendar?.current_semester) {
+  if (error || !calendarSummary?.current_semester) {
     return (
       <div className="bg-white dark:bg-surface-800 rounded-xl shadow-soft dark:shadow-dark-soft p-5 border border-gray-100 dark:border-surface-700">
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
@@ -61,7 +49,7 @@ export default function CalendarSidebar() {
     )
   }
 
-  const { current_semester, current_week, upcoming_holidays, upcoming_exams } = calendar
+  const { current_semester, current_week, upcoming_holidays, upcoming_exams } = calendarSummary
 
   if (viewMode === 'monthly') {
     return (

@@ -1,20 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { getNewsList, getSources } from '@/lib/api'
-import CalendarSidebar from './CalendarSidebar'
-import dayjs from 'dayjs'
-import 'dayjs/locale/zh-cn'
-
-dayjs.locale('zh-cn')
-
-interface SidebarProps {
-  categories: string[]
-  selectedCategory: string
-  onCategoryChange: (category: string) => void
-  selectedSource?: string
-  onSourceChange?: (source: string) => void
-}
+import Link from 'next/link'
 
 interface PopularNews {
   id: number
@@ -23,44 +9,29 @@ interface PopularNews {
   published_at?: string
 }
 
-export default function Sidebar({ categories, selectedCategory, onCategoryChange, selectedSource, onSourceChange }: SidebarProps) {
-  const [popularNews, setPopularNews] = useState<PopularNews[]>([])
-  const [sources, setSources] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
+interface SidebarProps {
+  categories: string[]
+  selectedCategory: string
+  onCategoryChange: (category: string) => void
+  sources?: string[]
+  selectedSource?: string
+  onSourceChange?: (source: string) => void
+  popularItems?: PopularNews[]
+  loading?: boolean
+}
 
-  useEffect(() => {
-    async function fetchPopularNews() {
-      try {
-        const data = await getNewsList({ page: 1, page_size: 5 })
-        // Sort by view count to get most popular
-        const sorted = [...data.items].sort((a, b) => b.view_count - a.view_count)
-        setPopularNews(sorted.slice(0, 5))
-      } catch (error) {
-        console.error('Failed to fetch popular news:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchPopularNews()
-  }, [])
-
-  useEffect(() => {
-    async function fetchSources() {
-      try {
-        const data = await getSources()
-        setSources(data.sources || [])
-      } catch (error) {
-        console.error('Failed to fetch sources:', error)
-      }
-    }
-    fetchSources()
-  }, [])
-
+export default function Sidebar({
+  categories,
+  selectedCategory,
+  onCategoryChange,
+  sources = [],
+  selectedSource = '',
+  onSourceChange,
+  popularItems = [],
+  loading = false,
+}: SidebarProps) {
   return (
     <aside className="space-y-6">
-      {/* Calendar */}
-      <CalendarSidebar />
-
       {/* Categories */}
       <div className="bg-white dark:bg-surface-800 rounded-xl shadow-soft dark:shadow-dark-soft p-5 border border-gray-100 dark:border-surface-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
@@ -116,17 +87,17 @@ export default function Sidebar({ categories, selectedCategory, onCategoryChange
             >
               全部来源
             </button>
-            {sources.map((source) => (
+            {sources.map((s) => (
               <button
-                key={source}
-                onClick={() => onSourceChange(source)}
+                key={s}
+                onClick={() => onSourceChange(s)}
                 className={`w-full text-left px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
-                  selectedSource === source
+                  selectedSource === s
                     ? 'bg-gradient-secondary text-white shadow-sm'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-700'
                 }`}
               >
-                {source}
+                {s}
               </button>
             ))}
           </div>
@@ -147,8 +118,8 @@ export default function Sidebar({ categories, selectedCategory, onCategoryChange
           </div>
         ) : (
           <div className="space-y-3">
-            {popularNews.map((news, index) => (
-              <a
+            {popularItems.map((news, index) => (
+              <Link
                 key={news.id}
                 href={`/news/${news.id}`}
                 className="block group"
@@ -178,7 +149,7 @@ export default function Sidebar({ categories, selectedCategory, onCategoryChange
                     </div>
                   </div>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         )}
