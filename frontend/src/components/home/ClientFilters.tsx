@@ -199,7 +199,7 @@ export default function ClientFilters({ categories, sources }: ClientFiltersProp
           <span>筛选:</span>
           {currentSearch && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
-              "{currentSearch}"
+              &ldquo;{currentSearch}&rdquo;
               <button onClick={handleSearchClear} className="hover:text-red-400">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

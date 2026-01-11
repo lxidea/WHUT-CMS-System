@@ -25,7 +25,7 @@ export default function CategoriesPage() {
         setCategories(cats)
 
         // Fetch count for each category
-        const statsPromises = cats.map(async (category) => {
+        const statsPromises = cats.map(async (category: string) => {
           const data = await getNewsList({ category, page: 1, page_size: 1 })
           return {
             category,
