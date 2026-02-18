@@ -9,17 +9,17 @@ class WhutNewsSpider(scrapy.Spider):
     """
     Spider for Wuhan University of Technology news website (http://i.whut.edu.cn)
 
-    Phase 5: Comprehensive crawling - extracts news from all categories, departments, and colleges
+    Rewritten for the redesigned site (~2025-12-22).
     """
     name = 'whut_news'
     allowed_domains = ['i.whut.edu.cn', 'whut.edu.cn', 'news.whut.edu.cn']
 
     start_urls = [
         'http://i.whut.edu.cn',                  # Homepage
-        'http://i.whut.edu.cn/xxtg/',           # School Notices (133 pages)
+        'http://i.whut.edu.cn/xxtg/',           # School Notices
         'http://i.whut.edu.cn/bmxw/',           # Department Highlights
         'http://i.whut.edu.cn/xytg/',           # College Notices
-        'http://i.whut.edu.cn/xyxw/',           # College News
+        'http://i.whut.edu.cn/lgjz/',           # Academic Lectures
     ]
 
     # Track visited URLs to avoid duplicates
@@ -35,51 +35,101 @@ class WhutNewsSpider(scrapy.Spider):
         if response.url == 'http://i.whut.edu.cn' or response.url == 'http://i.whut.edu.cn/':
             yield from self.parse_homepage(response)
         # Category pages with sidebar navigation
-        elif any(cat in response.url for cat in ['/xxtg/', '/bmxw/', '/xytg/', '/xyxw/']):
+        elif any(cat in response.url for cat in ['/xxtg/', '/bmxw/', '/xytg/', '/lgjz/']):
             yield from self.parse_category(response)
         else:
             self.logger.warning(f'No parser for URL: {response.url}')
 
     def parse_homepage(self, response):
         """
-        Parse homepage and extract news from all list_box sections
+        Parse homepage and extract news from all sections on the redesigned site.
+        Sections: headline carousel, image news carousel, tabbed news lists, notice lists.
         """
         self.logger.info(f'Parsing homepage: {response.url}')
 
-        # Find all news list boxes on homepage
-        news_sections = response.css('div.list_box1, div.list_box1.f10')
-        self.logger.info(f'Found {len(news_sections)} news sections')
+        # --- a) Headline carousel ---
+        headline_links = response.css('div.toutiao_box .swiper-slide .toutiao a')
+        self.logger.info(f'Headline carousel: {len(headline_links)} items')
+        for a in headline_links:
+            link = a.css('::attr(href)').get()
+            title = a.css('::text').get()
+            if link and title:
+                full_url = response.urljoin(link)
+                yield scrapy.Request(
+                    full_url,
+                    callback=self.parse_article,
+                    meta={
+                        'title': title.strip(),
+                        'date_str': None,
+                        'category': '头条新闻',
+                    }
+                )
 
-        for section in news_sections:
-            # Get section title/category
-            category = section.css('div.tit_box2 h2::text').get()
-            if category:
-                category = category.strip()
-            else:
-                category = '综合新闻'
+        # --- b) Image news carousel ---
+        image_news = response.css('div.swiper_box .swiper-slide .news_box')
+        self.logger.info(f'Image news carousel: {len(image_news)} items')
+        for box in image_news:
+            link = box.css('a.news_img_box::attr(href)').get()
+            if not link:
+                link = box.css('a::attr(href)').get()
+            title = box.css('div.img_text2 a span.title::text').get()
+            if not title:
+                title = box.css('a::attr(title)').get()
+            date_str = box.css('div.img_text2 a span.date::text').get()
+            if link and title:
+                full_url = response.urljoin(link)
+                yield scrapy.Request(
+                    full_url,
+                    callback=self.parse_article,
+                    meta={
+                        'title': title.strip(),
+                        'date_str': date_str.strip() if date_str else None,
+                        'category': '综合新闻',
+                    }
+                )
 
-            # Get all news items in this section
-            news_items = section.css('ul li')
-            self.logger.info(f'Section "{category}": found {len(news_items)} items')
+        # --- c) Tabbed news lists (综合新闻, 理工资讯, 媒体理工) ---
+        tab_items = response.css('div.tab_pane ul.list_t2 li')
+        self.logger.info(f'Tabbed news lists: {len(tab_items)} items')
+        for item in tab_items:
+            a = item.css('a')
+            if not a:
+                continue
+            link = a.css('::attr(href)').get()
+            title = a.css('span.list_text::text').get()
+            date_str = a.css('span.date::text').get()
+            if link and title:
+                full_url = response.urljoin(link)
+                yield scrapy.Request(
+                    full_url,
+                    callback=self.parse_article,
+                    meta={
+                        'title': title.strip(),
+                        'date_str': date_str.strip() if date_str else None,
+                        'category': '综合新闻',
+                    }
+                )
 
-            for item in news_items:
-                link = item.css('a::attr(href)').get()
-                title = item.css('a::attr(title)').get()
-                if not title:
-                    title = item.css('a::text').get()
-                date_str = item.css('span::text').get()
-
-                if link and title:
-                    full_url = response.urljoin(link)
-                    yield scrapy.Request(
-                        full_url,
-                        callback=self.parse_article,
-                        meta={
-                            'title': title.strip(),
-                            'date_str': date_str.strip() if date_str else None,
-                            'category': category
-                        }
-                    )
+        # --- d) Notice sections (ul.list_t li) ---
+        notice_items = response.css('ul.list_t li')
+        self.logger.info(f'Notice sections: {len(notice_items)} items')
+        for item in notice_items:
+            link = item.css('a.list_text::attr(href)').get()
+            title = item.css('a.list_text::text').get()
+            if not title:
+                title = item.css('a.list_text::attr(title)').get()
+            date_str = item.css('span.date::text').get()
+            if link and title:
+                full_url = response.urljoin(link)
+                yield scrapy.Request(
+                    full_url,
+                    callback=self.parse_article,
+                    meta={
+                        'title': title.strip(),
+                        'date_str': date_str.strip() if date_str else None,
+                        'category': '通知公告',
+                    }
+                )
 
     def parse_article(self, response):
         """
@@ -95,32 +145,37 @@ class WhutNewsSpider(scrapy.Spider):
         if not department:
             department = self.extract_department_from_title(title)
 
-        # Extract content from article body
-        # Try multiple common selectors
+        # --- Title: prefer structured hidden metadata, then h2.article_title ---
+        page_title = response.css('#NewsArticleTitle::text').get()
+        if page_title:
+            page_title = page_title.strip()
+        if not page_title:
+            page_title = response.css('h2.article_title::text').get()
+            if page_title:
+                page_title = page_title.strip()
+        if page_title:
+            title = page_title
+
+        # --- Content extraction ---
         content_parts = []
 
-        # Method 1: Common content div patterns
-        # Extract paragraph elements, then get all text from each paragraph
         content_div_selectors = [
+            'div.article_content',    # New redesigned site
             'div.TRS_Editor',         # TRS CMS (WHUT uses this)
             'div.article-content',
             'div.content',
             'div.article-body',
             'div.article',
-            'div.wp_articlecontent',  # Common in Chinese CMS
-            'div#vsb_content',        # VSB system
+            'div.wp_articlecontent',
+            'div#vsb_content',
             'div.text',
             'article',
         ]
 
-        content_parts = []
         for div_selector in content_div_selectors:
-            # Get all paragraph elements
             paragraphs = response.css(f'{div_selector} p')
             if paragraphs:
-                # For each paragraph, extract all text (including nested tags)
                 for p in paragraphs:
-                    # Get all text nodes within this paragraph
                     p_text = ' '.join(p.css('*::text, ::text').getall())
                     p_text = re.sub(r'\s+', ' ', p_text).strip()
                     if p_text:
@@ -128,13 +183,12 @@ class WhutNewsSpider(scrapy.Spider):
                 if content_parts:
                     break
 
-        # Join paragraphs with double newline
         content = '\n\n'.join(content_parts) if content_parts else ''
 
-        # If still no content, try XPath to get all text from likely content area
+        # Fallback: XPath text extraction
         if not content:
-            # Try to get all text from main content divs
             content_xpath = response.xpath(
+                '//div[contains(@class, "article_content")]//text() | '
                 '//div[contains(@class, "content")]//text() | '
                 '//div[contains(@class, "article")]//text() | '
                 '//div[@id="vsb_content"]//text() | '
@@ -144,46 +198,57 @@ class WhutNewsSpider(scrapy.Spider):
                 content = ' '.join([t.strip() for t in content_xpath if t.strip()])
                 content = re.sub(r'\s+', ' ', content).strip()
 
-        # Clean HTML tags and CSS class names from content
         content = self.clean_html(content)
 
-        # If STILL no content, create placeholder from title for image-only posts
+        # Fallback for image-only posts
         if not content and title:
-            # Extract image alt texts as fallback content
-            img_alts = response.css('div.TRS_Editor img::attr(alt)').getall()
+            img_alts = response.css('div.article_content img::attr(alt), div.TRS_Editor img::attr(alt)').getall()
             if img_alts:
                 img_text = '; '.join([alt.strip() for alt in img_alts if alt.strip()])
                 content = f"[图片公告] {img_text}" if img_text else f"[图片公告] {title}"
             else:
-                # For pure image announcements, use title as content
                 content = f"[图片公告] 详见附图"
 
-        # Parse date
-        published_at = self.parse_date(date_str) if date_str else None
+        # --- Date: prefer structured hidden metadata ---
+        pub_day = response.css('#NewsArticlePubDay::text').get()
+        if pub_day:
+            pub_day = pub_day.strip()
+        published_at = self.parse_date(pub_day) if pub_day else None
+        if not published_at:
+            # Try visible date span (strip label prefix)
+            visible_date = response.css('span.date::text').get()
+            if visible_date:
+                visible_date = re.sub(r'^发布时间[：:]\s*', '', visible_date.strip())
+            published_at = self.parse_date(visible_date) if visible_date else None
+        if not published_at and date_str:
+            published_at = self.parse_date(date_str)
 
-        # Extract author if present
-        author = response.css('span.author::text, div.author::text').get()
+        # --- Author: prefer structured hidden metadata ---
+        author = response.css('#NewsArticleAuthor::text').get()
+        if author:
+            author = author.strip() or None
         if not author:
-            # Try to find author in common patterns
+            author = response.css('span.author::text, div.author::text').get()
+        if not author:
             author_match = re.search(r'(作者|撰稿|编辑)[：:]\s*([^\s\u3000]+)', response.text)
             if author_match:
                 author = author_match.group(2)
 
-        # Extract publisher (publishing unit/department)
-        publisher = None
-
-        # Method 1: Look for common publisher labels
-        publisher_match = re.search(r'(来源|发布单位|供稿|单位|发布部门|发布者)[：:]\s*([^\s\u3000\|]+)', response.text)
-        if publisher_match:
-            publisher = publisher_match.group(2).strip()
-
-        # Method 2: If not found, try CSS selectors
+        # --- Publisher: prefer structured hidden metadata ---
+        publisher = response.css('#NewsArticleSource::text').get()
+        if publisher:
+            publisher = publisher.strip() or None
         if not publisher:
-            publisher = response.css('span.source::text, div.source::text, span.publisher::text').get()
-
-        # Method 3: Try to extract from metadata section
+            source_text = response.css('span.source::text').get()
+            if source_text:
+                publisher = re.sub(r'^信息来源[：:]\s*', '', source_text.strip()) or None
         if not publisher:
-            # Look for publisher in page metadata
+            publisher_match = re.search(r'(来源|发布单位|供稿|单位|发布部门|发布者)[：:]\s*([^\s\u3000\|]+)', response.text)
+            if publisher_match:
+                publisher = publisher_match.group(2).strip()
+        if not publisher:
+            publisher = response.css('div.source::text, span.publisher::text').get()
+        if not publisher:
             meta_section = response.css('div.xl-tie p, div.article-meta').getall()
             for meta_html in meta_section:
                 pub_match = re.search(r'(来源|发布单位|供稿)[：:]([^<\s]+)', meta_html)
@@ -191,8 +256,10 @@ class WhutNewsSpider(scrapy.Spider):
                     publisher = pub_match.group(2).strip()
                     break
 
-        # Extract images
+        # --- Images ---
         images = response.css(
+            'div.article_content img::attr(src), '
+            'div.TRS_Editor img::attr(src), '
             'div.article-content img::attr(src), '
             'div.content img::attr(src), '
             'div.wp_articlecontent img::attr(src), '
@@ -221,7 +288,7 @@ class WhutNewsSpider(scrapy.Spider):
             'a[href$=".xls"], '
             'a[href$=".xlsx"]'
         )
-        for link in attachment_links[:10]:  # Limit to 10 attachments
+        for link in attachment_links[:10]:
             href = link.css('::attr(href)').get()
             name = link.css('::text').get()
             if href:
@@ -243,11 +310,11 @@ class WhutNewsSpider(scrapy.Spider):
                 source_name='武汉理工大学',
                 published_at=published_at,
                 author=author.strip() if author else None,
-                publisher=publisher.strip() if publisher else None,  # Include publisher field
+                publisher=publisher.strip() if publisher else None,
                 images=images,
                 attachments=attachments,
                 category=category,
-                department=department,  # Include department field
+                department=department,
                 tags=[],
                 content_hash=content_hash,
             )
@@ -296,8 +363,8 @@ class WhutNewsSpider(scrapy.Spider):
         """
         self.logger.info(f'Parsing category page: {response.url}')
 
-        # Extract department/college links from sidebar
-        dept_links = response.css('div.text_list_menu2 ul li a::attr(href)').getall()
+        # Extract department/college links from sidebar (new selector)
+        dept_links = response.css('ul.side_menu_style3 li a::attr(href)').getall()
         self.logger.info(f'Found {len(dept_links)} department/college links in sidebar')
 
         # Follow each department/college link
@@ -332,45 +399,26 @@ class WhutNewsSpider(scrapy.Spider):
 
     def parse_news_list(self, response):
         """
-        Extract news items from current page (works for both homepage and category pages)
+        Extract news items from a category/department list page (redesigned site)
         """
-        # Try multiple selectors for different page layouts
-        news_items = []
-
-        # Homepage style (div.list_box1 ul li)
-        homepage_items = response.css('div.list_box1 ul li, div.list_box1.f10 ul li')
-        if homepage_items:
-            news_items.extend(homepage_items)
-
-        # Category page style (ul.normal_list2 li)
-        category_items = response.css('ul.normal_list2 li')
-        if category_items:
-            news_items.extend(category_items)
+        news_items = response.css('ul.list_t li')
 
         self.logger.info(f'Found {len(news_items)} news items on {response.url}')
 
+        category = self.extract_category(response.url)
+
         for item in news_items:
-            # Extract link and title (try multiple selectors)
-            link = item.css('a::attr(href)').get()
-            if not link:
-                link = item.css('span a:nth-child(2)::attr(href)').get()
-
-            title = item.css('a::attr(title)').get()
+            # Title: use title attribute for full (non-truncated) text
+            link = item.css('a.list_text::attr(href)').get()
+            title = item.css('a.list_text::attr(title)').get()
             if not title:
-                title = item.css('a::text').get()
-            if not title:
-                title = item.css('span a:nth-child(2)::attr(title)').get()
+                title = item.css('a.list_text::text').get()
 
-            # Extract date
-            date_str = item.css('span::text').get()
-            if not date_str:
-                date_str = item.css('strong::text').get()
+            # Date
+            date_str = item.css('span.date::text').get()
 
-            # Extract category from response URL
-            category = self.extract_category(response.url)
-
-            # Extract department/college tag if present
-            dept_tag = item.css('span i a::text').get()
+            # Department tag (e.g. 研究生院)
+            dept_tag = item.css('span.list_tag a::text').get()
 
             if link and title:
                 full_url = response.urljoin(link)
@@ -395,7 +443,6 @@ class WhutNewsSpider(scrapy.Spider):
         """
         Extract pagination info and follow next page
         """
-        # Extract JavaScript pagination variables
         count_match = re.search(r'var countPage = (\d+);', response.text)
         current_match = re.search(r'var currentPage = (\d+);', response.text)
 
@@ -405,7 +452,6 @@ class WhutNewsSpider(scrapy.Spider):
 
             self.logger.info(f'Pagination: page {current_page + 1}/{total_pages}')
 
-            # Only follow a limited number of pages to avoid overload (e.g., first 10 pages)
             max_pages = 10
             if current_page < min(total_pages - 1, max_pages - 1):
                 next_page_num = current_page + 1
@@ -419,7 +465,7 @@ class WhutNewsSpider(scrapy.Spider):
                     self.logger.info(f'Following pagination: {next_url}')
                     yield scrapy.Request(
                         next_url,
-                        callback=self.parse_category if '/xxtg/' in response.url or '/bmxw/' in response.url or '/xytg/' in response.url or '/xyxw/' in response.url else self.parse_department,
+                        callback=self.parse_category if any(cat in response.url for cat in ['/xxtg/', '/bmxw/', '/xytg/', '/lgjz/']) else self.parse_department,
                         meta=response.meta
                     )
 
@@ -433,8 +479,8 @@ class WhutNewsSpider(scrapy.Spider):
             return '部门亮点资讯'
         elif '/xytg/' in url:
             return '学院通知公告'
-        elif '/xyxw/' in url:
-            return '学院新闻'
+        elif '/lgjz/' in url:
+            return '学术讲座·报告·论坛'
         elif 'news.whut.edu.cn' in url:
             return '综合新闻'
         else:
@@ -461,7 +507,6 @@ class WhutNewsSpider(scrapy.Spider):
             return None
 
         try:
-            # Clean the date string
             date_str = date_str.strip()
 
             # Format 1: "2025-11-28"
@@ -478,11 +523,11 @@ class WhutNewsSpider(scrapy.Spider):
             if re.match(r'\d{4}/\d{2}/\d{2}', date_str):
                 return datetime.strptime(date_str[:10], '%Y/%m/%d').isoformat()
 
-            # Format 4: "11-28" (assume current year - 2025)
+            # Format 4: "11-28" or "02-14" (assume current year)
             match = re.search(r'(\d{1,2})-(\d{1,2})', date_str)
             if match:
                 month, day = match.groups()
-                year = 2025  # Current year
+                year = datetime.now().year
                 return datetime(year, int(month), int(day)).isoformat()
 
         except Exception as e:
