@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, nullslast
 from typing import Optional
 from app.core.database import get_db
 from app.models.news import News
@@ -52,7 +52,7 @@ async def get_news_list(
 
     total = query.count()
 
-    items = query.order_by(desc(News.published_at)).offset(
+    items = query.order_by(nullslast(desc(News.published_at))).offset(
         (page - 1) * page_size
     ).limit(page_size).all()
 
